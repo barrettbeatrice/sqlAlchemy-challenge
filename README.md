@@ -1,5 +1,5 @@
 # sqlAlchemy-challenge
-NB: BOTH Parts 1 (Using Alchemy for Exploratory Data Analysis and Charts) and 2 (Using Flask to create App with routes) can be found in the same .ipynb file: climate_starter.ipynb. The app.py also shows the Flask code but is not as reader friendly.
+
 
 Instructions
 Congratulations! You've decided to treat yourself to a long holiday vacation in Honolulu, Hawaii. To help with your trip planning, you decide to do a climate analysis about the area. The following sections outline the steps that you need to take to accomplish this task.
