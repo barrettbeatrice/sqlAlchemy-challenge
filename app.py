@@ -1,231 +1,151 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "bc1b4f18",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "# Import the dependencies.\n",
-    "import numpy as np\n",
-    "\n",
-    "import sqlalchemy\n",
-    "from sqlalchemy.ext.automap import automap_base\n",
-    "from sqlalchemy.orm import Session\n",
-    "from sqlalchemy import create_engine, func\n",
-    "\n",
-    "from flask import Flask, jsonify\n",
-    "\n",
-    "import datetime as dt\n",
-    "from dateutil.relativedelta import relativedelta\n",
-    "\n",
-    "#################################################\n",
-    "# Database Setup\n",
-    "#################################################\n",
-    "#Create engine\n",
-    "engine = create_engine(\"sqlite:///./Resources/hawaii.sqlite\")\n",
-    "\n",
-    "# Declare a Base using `automap_base()`(same from Part 1)\n",
-    "Base = automap_base()\n",
-    "# Use the Base class to reflect the database tables\n",
-    "Base.prepare(engine, reflect=True)\n",
-    "\n",
-    "# Assign the measurement class to a variable called `Measurement` and\n",
-    "# the station class to a variable called `Station`\n",
-    "Measurement = Base.classes.measurement\n",
-    "Station = Base.classes.station\n",
-    "print(Base.classes.keys()) #just to check\n",
-    "\n",
-    "#################################################\n",
-    "# Flask Setup\n",
-    "#################################################\n",
-    "app = Flask(__name__)\n",
-    "\n",
-    "#Define what to do when a user hits the index route    \n",
-    "\n",
-    "@app.route(\"/\")\n",
-    "def home():\n",
-    "    return (\n",
-    "        f\"Welcome to Climate Analysis API!<br/>\"\n",
-    "        f\"Available Routes:<br/>\"\n",
-    "        f\"/api/v1.0/precipitation<br/>\"\n",
-    "        f\"/api/v1.0/stations<br/>\"\n",
-    "        f\"/api/v1.0/tobs\"\n",
-    "    )\n",
-    "\n",
-    "\n",
-    "@app.route(\"/api/v1.0/precipitation\")\n",
-    "def precipitation_data():\n",
-    "    \"\"\"Query to retrieve the last 12 months of precipitation data and return the results.\"\"\"\n",
-    "    # Create new session (link) from Python to the DB.\n",
-    "    session = Session(engine)\n",
-    "\n",
-    "    # Repeating query for a new session --> Calculate the date 1 year ago from the last data point in the database.\n",
-    "    precipitation_data = session.query(Measurement.date, Measurement.prcp).filter(Measurement.date>=\"2016-08-23\").all()\n",
-    "    precip_dict = list(np.ravel(precipitation_data))\n",
-    "    \n",
-    "    session.close()\n",
-    "    #Convert query result to a Dictionary\n",
-    "    #using `date` as the key and `tobs` as the value.\n",
-    "    precip_dict = []\n",
-    "    for temps in precipitation_data:\n",
-    "         temps_dict = {}\n",
-    "         temps_dict[\"date\"] = Measurement.date\n",
-    "         temps_dict[\"tobs\"] = Measurement.tobs\n",
-    "         precip_dict.append(temps_dict)\n",
-    "\n",
-    "    # Return the JSON representation of dictionary.\n",
-    "    return jsonify(precip_dict)\n",
-    "\n",
-    "\n",
-    "@app.route(\"/api/v1.0/stations\")\n",
-    "def stations():\n",
-    "    \"\"\"Return a JSON list of stations from the dataset.\"\"\"\n",
-    "    # Create our session (link) from Python to the DB\n",
-    "    session = Session(engine)\n",
-    "\n",
-    "    # Query for stations.\n",
-    "    stations = session.query(Station.station, Station.name,\n",
-    "                             Station.latitude, Station.longitude, Station.elevation).all()\n",
-    "\n",
-    "    session.close()\n",
-    "\n",
-    "    # Option 1: Convert the query results to a dictionary --> to be fully comprehensive, though not necessary, \n",
-    "    #as can also use abridged route\n",
-    "    all_stations = []\n",
-    "    for station, name, latitude, longitude, elevation in stations:\n",
-    "        station_dict = {}\n",
-    "        station_dict[\"station\"] = station\n",
-    "        station_dict[\"name\"] = name\n",
-    "        station_dict[\"latitude\"] = latitude\n",
-    "        station_dict[\"longitude\"] = longitude\n",
-    "        station_dict[\"elevation\"] = elevation\n",
-    "        all_stations.append(station_dict)\n",
-    "\n",
-    "    #Option 2: convert the array directly to a list\n",
-    "    # Query for the stations\n",
-    "    #all_stations = session.query(Station.station, Station.name).\\\n",
-    "                           #group_by(Station.station).all()\n",
-    "\n",
-    "    #session.close()\n",
-    "\n",
-    "    # Unravel results into a 1D array and convert to a list\n",
-    "    # list_stations = list(np.ravel(all_stations))\n",
-    "    \n",
-    "    # Return the JSON representation of dictionary.\n",
-    "    return jsonify(all_stations)\n",
-    "\n",
-    "#Query the dates and temperature observations of the most-active station for the previous year of data.\n",
-    "\n",
-    "#Return a JSON list of temperature observations for the previous year.\n",
-    "\n",
-    "####Route 3#####\n",
-    "@app.route(\"/api/v1.0/tobs\")\n",
-    "def tobs():\n",
-    "    session = Session(engine)\n",
-    "    \n",
-    "    # Query temperature observations for USC00519281 station within the specified date range\n",
-    "    results = session.query(Measurement.date, Measurement.tobs).\\\n",
-    "            filter(Measurement.date >= \"2016-08-23\").\\\n",
-    "            filter(Measurement.date <= \"2017-08-23\").\\\n",
-    "            filter(Measurement.station == 'USC00519281').all()\n",
-    "    \n",
-    "    session.close()\n",
-    "\n",
-    "    # Convert the query results to a list of dictionaries (Option method 1, cf. cell above)\n",
-    "    tobs_dict = []\n",
-    "    for date, tobs in results:\n",
-    "         temp_dict = {}\n",
-    "         temp_dict[\"date\"] = date  # Use the 'date' variable instead of Measurement.date\n",
-    "         temp_dict[\"tobs\"] = tobs  # Use the 'tobs' variable instead of Measurement.tobs\n",
-    "         tobs_dict.append(temp_dict)\n",
-    "\n",
-    "    # Return the JSON representation of the list of dictionaries\n",
-    "    return jsonify(tobs_dict)\n",
-    "\n",
-    "# start and end dates should be entered in \"YYYY-MM-DD\" format\n",
-    "# i.e (host#)/api/v1.0/temp/2012-02-28 when given only the start date\n",
-    "# i.e. (host#)/api/v1.0/temp/2012-02-28/'2012-03-05' when given both start and end date\n",
-    "\n",
-    "\n",
-    "@app.route(\"/api/v1.0/temp/<start>\")\n",
-    "@app.route(\"/api/v1.0/<start>/<end>\")\n",
-    "def stats(start=None, end=None):\n",
-    "\n",
-    "    session = Session(engine)\n",
-    "\n",
-    "    #calculate min, avg and max if no end date and only start date\n",
-    "    if end is None:\n",
-    "        # calculate temperature stats for dates greater than start\n",
-    "        aggregates = func.min(Measurement.tobs).label(\"Min_Temp\"),\\\n",
-    "                    func.avg(Measurement.tobs).label(\"Avg_Temp\"),\\\n",
-    "                    func.max(Measurement.tobs).label(\"Max_Temp\")\n",
-    "                     \n",
-    "        temp_data = session.query(*aggregates).filter(Measurement.date >= start).all()\n",
-    "       \n",
-    "        list_temp = []\n",
-    "\n",
-    "        for data in temp_data:\n",
-    "\n",
-    "            dict_temp = {}\n",
-    "            dict_temp[\"minimum temperature\"] = data.Min_Temp\n",
-    "            dict_temp[\"average temperature\"] = data.Avg_Temp\n",
-    "            dict_temp[\"maximum temperature\"] = data.Max_Temp\n",
-    "            list_temp.append(dict_temp)\n",
-    "        \n",
-    "        # Return the jsonify() representation of the list\n",
-    "        return jsonify(list_temp)\n",
-    "\n",
-    "    else:\n",
-    "        # calculate temperature stats with both start and end dates\n",
-    "        aggregates = func.min(Measurement.tobs).label(\"Min_Temp\"),\\\n",
-    "                    func.avg(Measurement.tobs).label(\"Avg_Temp\"),\\\n",
-    "                    func.max(Measurement.tobs).label(\"Max_Temp\")\n",
-    "        temp_data = session.query(*aggregates).\\\n",
-    "                    filter(Measurement.date >= start).\\\n",
-    "                    filter(Measurement.date <= end).all()\n",
-    "\n",
-    "        list_temp = []\n",
-    "\n",
-    "        for data in temp_data:\n",
-    "\n",
-    "            dict_temp = {}\n",
-    "            dict_temp[\"minimum temperature\"] = data.Min_Temp\n",
-    "            dict_temp[\"average temperature\"] = data.Avg_Temp\n",
-    "            dict_temp[\"maximum temperature\"] = data.Max_Temp\n",
-    "            list_temp.append(dict_temp)\n",
-    "        \n",
-    "        session.close()\n",
-    "        # Return the jsonify() representation of the list\n",
-    "        return jsonify(list_temp)\n",
-    "\n",
-    "##RUN APP\n",
-    "\n",
-    "if __name__ == '__main__':\n",
-    "    app.run(debug=True)"
-   ]
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python 3 (ipykernel)",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.10.13"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+# ----------------------------i
+# 1. SET UP THE FLASK WEATHER APP
+# ----------------------------
+
+
+# Import the dependencies.
+import numpy as np
+
+import sqlalchemy
+from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, func
+
+from flask import Flask, jsonify
+
+import datetime as dt
+from dateutil.relativedelta import relativedelta
+
+
+#################################################
+# Database Setup
+#################################################
+
+# Create engine using the `hawaii.sqlite` database file
+engine = create_engine("sqlite:///hawaii.sqlite")
+
+# Declare a Base using `automap_base()`
+Base = automap_base()
+
+# Use the Base class to reflect the database tables
+Base.prepare(engine, reflect=True)
+
+
+# Assign the measurement class to a variable called `Measurement` and
+# the station class to a variable called `Station`
+Measurement = Base.classes.measurement
+Station = Base.classes.station
+
+
+# Create a session
+session = Session(engine)
+
+#################################################
+# Flask Setup
+#################################################
+
+app = Flask(__name__)
+
+
+#################################################
+# Flask Routes
+#################################################
+
+#Welcome Route
+@app.route("/")
+
+#Routing information added
+def welcome():
+	return(
+	'''
+	f"Welcome to Climate Analysis API!<br/>"
+    f"Available Routes:<br/>"
+    f"/api/v1.0/precipitation<br/>"
+    f"/api/v1.0/stations<br/>"
+    f"/api/v1.0/tobs<br/>"
+	f"/api/v1.0/temp/start/end"
+	''')
+
+
+#<br/> tags and f string formatting in this context is for formatting HTML content on separate lines
+
+#Precipitation Route
+@app.route("/api/v1.0/precipitation")
+
+def precipitation():
+	# Calculate the date one year ago from the most recent date
+	prev_year = dt.date(2017, 8, 23) - dt.timedelta(days=365)
+
+	# Query: get date and precipitation for prev_year
+	precipitation = session.query(Measurement.date,Measurement.prcp).\
+		filter(Measurement.date >= prev_year).all()
+		
+	# Create dictionary w/ jsonify()--format results into .JSON
+	precip = {date: prcp for date, prcp in precipitation}
+	return jsonify(precip)
+
+
+
+#Stations Route
+@app.route("/api/v1.0/stations")
+
+def stations():
+	results = session.query(Station.station).all()
+	
+	# Unravel results
+	stations = list(np.ravel(results))
+	return jsonify(stations=stations) 
+
+
+# Tobs Route
+app.route("/api/v1.0/tobs")
+def temp_monthly():
+    prev_year = dt.date(2017,8,23) - dt.timedelta(days=365)
+    results = session.query(Measurement.tobs).\
+        filter(Measurement.station == 'USC00519281').\
+        filter(Measurement.date >= prev_year).all()
+    temps = list(np.ravel(results))
+    return jsonify(temps=temps)
+
+
+
+#Statistics Route
+# Provide both start and end date routes:
+@app.route("/api/v1.0/temp/<start>")
+@app.route("/api/v1.0/temp/<start>/<end>")
+
+def stats(start='2017-06-01',end='2017-06-30'):
+	# Query: min, avg, max temps; create list called `sel`, if not given start or end date
+	#We know that in this case, end date is 08/23/2017
+	
+	sel = [func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
+
+	# Add `if-not` statement to determine if no start/end date given
+	if not end:
+		results = session.query(*sel).\
+			filter(Measurement.date >= start).\
+			filter(Measurement.date <= end).all()
+		temps = list(np.ravel(results))
+	    return jsonify(temps=temps)
+
+		#(*sel) - asterik indicates multiple results from query: minimum, average, and maximum temperatures
+
+	# Query: Calc statistics data
+	results = session.query(*sel).\
+		filter(Measurement.date >= start).\
+		filter(Measurement.date <= end).all()
+	temps = list(np.ravel(results))
+	return jsonify(temps=temps)
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+
+
+
+    #THE Statistical OUTPUT returns
+	# NOTE: Add following to path to address in browser:
+		# /api/v1.0/temp/2017-06-01/2017-06-30
+		# result: ["temps":[71.0,77.21989528795811,83.0]]
