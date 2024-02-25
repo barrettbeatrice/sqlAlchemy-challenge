@@ -52,21 +52,19 @@ app = Flask(__name__)
 @app.route("/")
 #Routing information added
 def welcome():
-	#List all available api routes
-	return(
-		f"Welcome to Climate Analysis API!<br/>"
-    	f"Available Routes:<br/>"
-    	f"/api/v1.0/precipitation<br/>"
-    	f"/api/v1.0/stations<br/>"
-    	f"/api/v1.0/tobs<br/>"
-		f"/api/v1.0/temp/start<br/>"
-		f"/api/v1.0/temp/start/end"
-	)
+    # List all available api routes
+    return (
+        f"Welcome to Climate Analysis API!<br/>\n"
+        f"Available Routes:<br/>\n"
+        f"/api/v1.0/precipitation<br/>\n"
+        f"/api/v1.0/stations<br/>\n"
+        f"/api/v1.0/tobs<br/>\n"
+        f"/api/v1.0/temp/start<br/>\n"
+        f"/api/v1.0/temp/start/end"
+    )
 
 
-#<br/> tags and f string formatting in this context is for formatting HTML content on separate lines
-
-#Precipitation Route###################
+#Precipitation Route
 @app.route("/api/v1.0/precipitation")
 def precipitation():
     # Create our session (link) from Python to the DB
@@ -170,10 +168,9 @@ def calc_temps(start, end):
     #Query
     results=session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
                 filter(Measurement.date >= start).filter(Measurement.date <= end).all()
+    session.close()
     
-	session.close()
-    
-	#Create Dictionary
+	#Create Dictionary and JSON friendly format
 	temp_obs={}
     temp_obs["Min_Temp"]=results[0][0]
     temp_obs["avg_Temp"]=results[0][1]
